@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Doping data</title>
+    <link rel="stylesheet" type ="text/css" href="./styles.css" />
+    <script type="module">
+        import * as d3 from "https://cdn.jsdelivr.net/npm/d3@7/+esm"
+        const w = 1000
+        const h = 630
+        const p = 60
+        //Declare tooltip variable
+        const tooltip = d3.select("body").append("div")
+                            .attr("id", "tooltip")
+                            .style("opacity", 0) 
+
+        function dataUpdates(data){
+            //Change year to a string
+            const changes = data.map((value) => {return {
+                ...value, 
+                Year: value["Year"].toString(), 
+                TimeObject: new Date(`01/01/1969 00:${value["Time"]}`)
+            }})
+            render(changes)
+        }
+
+
+        function render(data) {
+            //Define limits for x-axis, original data is as string, needs to be string for new Date()            
+            const xLim = {
+                min: (parseInt(d3.min(data, (d) => d["Year"])) - 1).toString(), 
+                max: (parseInt(d3.max(data, (d) => d["Year"])) + 1).toString()
+            }
+
+            //Initialise SVG
+            const svg = d3
+                        .select("body")
+                        .append("svg")
+                        .attr("width", w)
+                        .attr("height", h)
+
+            //Scale axes
+            const xScale = d3
+                            .scaleTime()
+                            .domain([new Date (xLim.min), new Date (xLim.max)])
+                            .range([p, w - p])
+
+            const yScale = d3
+                            .scaleTime()
+                            .domain([d3.max(data, (d) => {return new Date(d["TimeObject"])}), d3.min(data, (d) => {return new Date(d["TimeObject"])})])
+                            .range([h - p, p])
+
+            //Add scatter graph
+            svg
+            .selectAll("circle")
+            .data(data)
+            .enter()
+            .append("circle")
+            .attr("cx", (d) => xScale(new Date(d["Year"])))
+            .attr("cy", (d) => yScale(new Date(d["TimeObject"])))
+            .attr("r", "7")
+            .attr("data-yvalue", (d) => {return new Date(d["TimeObject"])})
+            .attr("data-xvalue", (d) => d["Year"])
+            .attr("class", "dot")
+            .style("fill", (d) => {return d["Doping"] ? "Orange" : "Blue"})
+            .style("stroke", "black")
+            .style("opacity", .8)
+            .on("mouseover", (event, d, i) => {
+                tooltip.attr("data-year", d["Year"])
+                tooltip.transition().duration(100).style("opacity", .9);
+                tooltip.html(`${d["Name"]}: ${d["Nationality"]}<br>Year: ${d["Year"]}, Time: ${d["Time"]}<br><br>${d["Doping"]}`).style("left", (event.pageX) + "px").style("top", (event.pageY) + "px")
+            })
+            .on("mouseout", (d) => {
+                tooltip.transition().duration(200).style("opacity", 0)
+            })
+
+            //Init axes
+            const xAxis = d3.axisBottom(xScale)
+
+            svg
+            .append("g")
+            .attr("transform", "translate(0, " + (h - p) + ")")
+            .attr("id", "x-axis")
+            .call(xAxis)
+
+            const yAxis = d3.axisLeft(yScale).tickFormat(d3.timeFormat("%M:%S"))
+
+            svg
+            .append("g")
+            .attr("transform" , `translate(${p}, 0)`)
+            .attr("id", "y-axis")
+            .call(yAxis)
+
+            //Add legend
+
+            const legend = d3.select("svg").append("g").attr("id", "legend")
+
+            legend.append("rect").attr("x", 690).attr("y", 212.5).attr("width", 15).attr("height", 15).style("fill", "blue")
+            legend.append("text").attr("x", 710).attr("y", 225).text("No allegations").style("font-size", "15px").attr("alignment-baseline", "middle")
+            legend.append("rect").attr("x", 690).attr("y", 192.5).attr("width", 15).attr("height", 15).style("fill", "orange")
+            legend.append("text").attr("x", 710).attr("y", 205).text("Riders with doping allegations").style("font-size", "15px").attr("alignment-baseline", "middle")
+            
+            //Y-axis label
+
+            svg.append("text")
+                .attr("class", "y-label")
+                .attr("text-anchor", "end")
+                .attr("y", 15)
+                .attr("x", -p*3)
+                .attr("font-size", "12px")
+                .attr("transform", "rotate(-90)")
+                .text("Time in minutes")
+
+            //Graph title
+
+            svg.append("text")
+                .attr("x", (w/2))
+                .attr("y", 0 + (p/2))
+                .attr("text-anchor", "middle")
+                .style("font-size", "28px")
+                .style("text-decoration", "underline")
+                .text("Doping in Professional Cycling")
+
+            svg.append("text")
+                .attr("x", (w/2))
+                .attr("y", p - 5)
+                .attr("text-anchor", "middle")
+                .style("font-size", "18px")
+                .text("35 fastest times up Alpe D'Huez")
+        }
+
+        fetch("https://raw.githubusercontent.com/freeCodeCamp/ProjectReferenceData/master/cyclist-data.json")
+            .then(response => response.json())
+            .then(data => dataUpdates(data))
+    </script>
+
+</head>
+
+<body>
+    <div id="title"></div>
+    <script src="https://cdn.freecodecamp.org/testable-projects-fcc/v1/bundle.js"></script>
+</body>
+</html>
